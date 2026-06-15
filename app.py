@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -61,6 +62,25 @@ def obtener_datos_alumno(dni):
     return nombre, apellido, carrera
 
 
+def registrar_solicitud(dni, carrera):
+    conexion = sqlite3.connect(DB_NAME)
+    cursor = conexion.cursor()
+
+    fecha_actual = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    estado_solicitud = "Pendiente"
+
+    cursor.execute("""
+        INSERT INTO solicitudes (dni, carrera, fecha_solicitud, estado_solicitud)
+        VALUES (?, ?, ?, ?)
+    """, (dni, carrera, fecha_actual, estado_solicitud))
+
+    numero_tramite = cursor.lastrowid
+
+    conexion.commit()
+    conexion.close()
+
+    return numero_tramite
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -120,8 +140,9 @@ def chat():
 
     if estado == "CONFIRMAR_SOLICITUD":
         if mensaje.lower() in ["si", "sí", "s"]:
+            numero_tramite = registrar_solicitud(alumno_actual["dni"], alumno_actual["carrera"])
             return jsonify({
-                "respuesta": "Certificado de alumno regular solicitado con éxito. En breve recibirá un correo con el certificado adjunto. Gracias por utilizar el sistema.",
+                "respuesta": f"Solicitud Generada, su numero de tramite es {numero_tramite}. En breve recibirá respuesta por email.",
                 "estado": "FIN",
                 "alumno": None
             })
