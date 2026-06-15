@@ -1,21 +1,9 @@
 from flask import Flask, render_template, request, jsonify
+import sqlite3
+
 
 app = Flask(__name__)
-
-alumnos = {
-    "40111222": {
-        "nombre": "Juan",
-        "apellido": "Perez",
-        "carrera": "Tecnicatura Universitaria en Programacion",
-        "estado": "Activo"
-    },
-    "39222333": {
-        "nombre": "Ana",
-        "apellido": "Gomez",
-        "carrera": "Tecnicatura Universitaria en Programacion",
-        "estado": "Inactivo"
-    }
-}
+DB_NAME = "certificados.db"
 
 
 def validar_dni(dni):
@@ -27,21 +15,49 @@ def validar_dni(dni):
 
 
 def dni_en_bd(dni):
-    if dni in alumnos:
+    conexion = sqlite3.connect(DB_NAME)
+    cursor = conexion.cursor()
+
+    cursor.execute("SELECT dni FROM alumnos WHERE dni = ?", (dni,))
+    alumno = cursor.fetchone()
+
+    conexion.close()
+
+    if alumno:
         return True
     return False
 
 
 def validar_activo(dni):
-    if alumnos[dni]["estado"] == "Activo":
+    conexion = sqlite3.connect(DB_NAME)
+    cursor = conexion.cursor()
+
+    cursor.execute("SELECT estado FROM alumnos WHERE dni = ?", (dni,))
+    alumno = cursor.fetchone()
+
+    conexion.close()
+
+    if alumno and alumno[0] == "Activo":
         return True
     return False
 
 
 def obtener_datos_alumno(dni):
-    nombre = "Nombre"
-    apellido = "Apellido"
-    carrera = "carrera"
+    conexion = sqlite3.connect(DB_NAME)
+    cursor = conexion.cursor()
+
+    cursor.execute(
+        "SELECT nombre, apellido, carrera FROM alumnos WHERE dni = ?",
+        (dni,)
+    )
+
+    alumno = cursor.fetchone()
+    conexion.close()
+
+    nombre = alumno[0]
+    apellido = alumno[1]
+    carrera = alumno[2]
+
     return nombre, apellido, carrera
 
 
