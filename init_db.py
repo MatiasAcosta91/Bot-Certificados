@@ -1,7 +1,7 @@
 import sqlite3
 DB_NAME = "certificados.db"
 
-def  crear_base_de_datos():
+def crear_base_de_datos():
     conexion = sqlite3.connect(DB_NAME)
     cursor = conexion.cursor()
 
