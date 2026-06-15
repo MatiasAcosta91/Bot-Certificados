@@ -1,30 +1,6 @@
-def validar_dni(dni):
-    if len(dni) != 8:
-        return False
-    if not dni.isdigit():
-        return False
-    return True
+from flask import Flask, render_template, request, jsonify
 
-def dni_en_bd(dni):
-    if dni in alumnos:
-        return True
-    return False
-
-def validar_activo(dni):
-    if alumnos[dni]["estado"] == "Activo":
-        return True
-    return False
-
-def obtener_datos_alumno(dni):
-    #en esta funcion se obtienen los datos de la base de datos
-    nombre = "Nombre"
-    apellido = "Apellido"
-    carrera = "carrera"
-    return nombre,apellido,carrera;
-
-saludo = print("Hola, bienvenido al sistema de solicitudes de certificados de alumno regular:")
-
-repetir = True
+app = Flask(__name__)
 
 alumnos = {
     "40111222": {
@@ -41,30 +17,119 @@ alumnos = {
     }
 }
 
-while repetir:
-    dni = input("Ingrese su número de DNI o 0 para finalizar: ")
-    if dni != "0":
-        if validar_dni(dni):
-            if dni_en_bd(dni):
-                if validar_activo(dni):
-                    nombre_alumno, apellido_alumno, carrera = obtener_datos_alumno(dni);
-                    print(f" DNI: {dni} Nombre: {nombre_alumno}, Apellido: {apellido_alumno}, Carrera: {carrera}")
-                    print("ingrese 'SI' para solicitar o 'NO' para cancelar.  ")
-                    respuesta = input()
-                    if respuesta.lower() == "si":
-                        print("Certificado de alumno regular solicitado con éxito. El mismo sera enviado a su email a la brevedad")
-                    else:
-                        print("Solicitud de certificado cancelada. ¡Gracias por utilizar el sistema!")
-                else:
-                    print("El dni ingresado no corresponde a un estudiante activo.")        
-            else:
-                print("El dni no se encuentra en la base de datos.")
+
+def validar_dni(dni):
+    if len(dni) != 8:
+        return False
+    if not dni.isdigit():
+        return False
+    return True
+
+
+def dni_en_bd(dni):
+    if dni in alumnos:
+        return True
+    return False
+
+
+def validar_activo(dni):
+    if alumnos[dni]["estado"] == "Activo":
+        return True
+    return False
+
+
+def obtener_datos_alumno(dni):
+    nombre = "Nombre"
+    apellido = "Apellido"
+    carrera = "carrera"
+    return nombre, apellido, carrera
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    mensaje = data.get("mensaje", "").strip()
+    estado = data.get("estado", "SOLICITAR_DNI")
+    alumno_actual = data.get("alumno", None)
+
+    if estado == "SOLICITAR_DNI":
+        if mensaje == "0":
+            return jsonify({
+                "respuesta": "Gracias por utilizar el sistema. Hasta luego.",
+                "estado": "FIN",
+                "alumno": None
+            })
+
+        elif not validar_dni(mensaje):
+            return jsonify({
+                "respuesta": "DNI ingresado inválido.",
+                "estado": "SOLICITAR_DNI",
+                "alumno": None
+            })
+
+        elif not dni_en_bd(mensaje):
+            return jsonify({
+                "respuesta": "El DNI no se encuentra en la base de datos.",
+                "estado": "SOLICITAR_DNI",
+                "alumno": None
+            })
+
+        elif not validar_activo(mensaje):
+            return jsonify({
+                "respuesta": "El DNI ingresado no corresponde a un estudiante activo.",
+                "estado": "FIN",
+                "alumno": None
+            })
+
         else:
-            print("DNI ingresado invalido.")
-    else:
-        print("Gracias por utilizar el sistema de solicitudes de certificados de alumno regular. ¡Hasta luego!")
-        repetir = False
+            nombre, apellido, carrera = obtener_datos_alumno(mensaje)
+
+            alumno_data = {
+                "dni": mensaje,
+                "nombre": nombre,
+                "apellido": apellido,
+                "carrera": carrera
+            }
+
+            return jsonify({
+                "respuesta": f"DNI: {mensaje}<br>Nombre: {nombre}<br>Apellido: {apellido}<br>Carrera: {carrera}<br>¿Confirma solicitud? Responda SI o NO.",
+                "estado": "CONFIRMAR_SOLICITUD",
+                "alumno": alumno_data
+            })
+
+    if estado == "CONFIRMAR_SOLICITUD":
+        if mensaje.lower() in ["si", "sí", "s"]:
+            return jsonify({
+                "respuesta": "Certificado de alumno regular solicitado con éxito. En breve recibirá un correo con el certificado adjunto. Gracias por utilizar el sistema.",
+                "estado": "FIN",
+                "alumno": None
+            })
+
+        elif mensaje.lower() in ["no", "n"]:
+            return jsonify({
+                "respuesta": "Solicitud de certificado cancelada.",
+                "estado": "FIN",
+                "alumno": None
+            })
+
+        else:
+            return jsonify({
+                "respuesta": "Respuesta inválida. Por favor responda SI o NO.",
+                "estado": "CONFIRMAR_SOLICITUD",
+                "alumno": alumno_actual
+            })
+
+    return jsonify({
+        "respuesta": "La conversación ya finalizó. Recargue la página para iniciar una nueva solicitud.",
+        "estado": "FIN",
+        "alumno": None
+    })
 
 
-
-    
+if __name__ == "__main__":
+    app.run(debug=True)

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bot Certificados</title>
+</head>
+<body>
+    <h1>Bot de Certificados</h1>
+
+    <div id="chat">
+        <p><strong>Bot:</strong> Hola, ingrese su DNI o 0 para finalizar.</p>
+    </div>
+
+    <input type="text" id="mensaje" placeholder="Escriba su mensaje">
+    <button onclick="enviarMensaje()">Enviar</button>
+
+    <script>
+        let estado = "SOLICITAR_DNI";
+    let alumno = null;
+
+    function enviarMensaje() {
+        const input = document.getElementById("mensaje");
+        const mensaje = input.value;
+
+        fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                mensaje: mensaje,
+                estado: estado,
+                alumno: alumno
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const chat = document.getElementById("chat");
+
+            chat.innerHTML += `<p><strong>Alumno:</strong> ${mensaje}</p>`;
+            chat.innerHTML += `<p><strong>Bot:</strong> ${data.respuesta}</p>`;
+
+            estado = data.estado;
+            alumno = data.alumno;
+
+            input.value = "";
+        });
+    }
+    </script>
+</body>
+</html>
